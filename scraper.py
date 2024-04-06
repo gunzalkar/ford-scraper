@@ -1,5 +1,7 @@
 import time
 import csv
+import os
+import pandas as pd
 import urllib.request as req
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -13,7 +15,10 @@ from selenium.common.exceptions import NoSuchElementException
 # Setting up the Chrome webdriver
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
-def scrape_data(url):
+def scrape_data(zip_code):
+    # Format zip code to ensure it has leading zeros
+    formatted_zip = f'{zip_code:05d}'
+    url = f'https://www.ford.com/dealerships/#/q/{formatted_zip}/radius/50'
     driver.get(url)
     while True:
         try:
@@ -23,32 +28,43 @@ def scrape_data(url):
         except:
             break
 
-    index_id = driver.find_elements(By.CLASS_NAME, "index")
+    # error_element = driver.find_element(By.XPATH, "//span[@class='text error' and @id='fgx-brand-locateDealerMsgError']")
     dealer_names = driver.find_elements(By.CLASS_NAME, "dealer-name")
-    distance = driver.find_elements(By.CLASS_NAME, "distance")
+    distance = driver.find_elements(By.XPATH, "//span[@class='distance']")
     address = driver.find_elements(By.CLASS_NAME, "street-city-state-zip")
-    telephone = driver.find_elements(By.CLASS_NAME, "phone-link")
+    telephone = driver.find_elements(By.XPATH, "//span[@class='text phone-link']")
+
+    print("Dealer found for zip-code:", zip_code)
+    # index_id = driver.find_elements(By.CLASS_NAME, "index")
+
+    # Check if the CSV file exists and is empty
+    if not os.path.exists('dealer_info.csv') or os.stat('dealer_info.csv').st_size == 0:
+        with open('dealer_info.csv', 'w', newline='', encoding='utf-8') as csvfile:
+            # Create a CSV writer object
+            csv_writer = csv.writer(csvfile)
+            # Write the header row
+            csv_writer.writerow(['Dealer Name', 'Distance', 'Address', 'Telephone'])
 
     # Open a CSV file in write mode
-    with open('dealer_info.csv', 'w', newline='', encoding='utf-8') as csvfile:
+    with open('dealer_info.csv', 'a', newline='', encoding='utf-8') as csvfile:
         # Create a CSV writer object
         csv_writer = csv.writer(csvfile)
-        # Write the header row
-        csv_writer.writerow(['Index', 'Dealer Name', 'Distance', 'Address', 'Telephone'])
         # Iterate over the elements and write each row to the CSV file
-        for i in range(len(index_id)):
-            index = index_id[i].text if i < len(index_id) else ''
-            name = dealer_names[i].text if i < len(dealer_names) else ''
-            dist = distance[i].text if i < len(distance) else ''
-            addr = address[i].text if i < len(address) else ''
-            tele_element = telephone[i] if i < len(telephone) else None
-            try:
-                tele = tele_element.find_element(By.CLASS_NAME, "text").text
-            except NoSuchElementException:
-                tele = ''
-            csv_writer.writerow([index, name, dist, addr, tele])
+        for i in range(len(dealer_names)):
+            # index = index_id[i].text
+            name = dealer_names[i].text
+            dist = distance[i].text
+            addr = address[i].text
+            # Extract telephone numbers
+            telephone_numbers = [tel.text.strip() for tel in telephone]
+            tel = telephone_numbers[i]
+            print(name , dist, addr, tel)
+            csv_writer.writerow([name, dist, addr, tel])
+    print("Data has been scraped and stored in dealer_info.csv for url:{0} and zip-code:{1}".format(url, zip_code))
 
-    print("Data has been scraped and stored in dealer_info.csv")
-
-url = 'https://www.ford.com/dealerships/#/q/10012/radius/50'
-scrape_data(url)
+# Read zip codes from Excel file
+zip_codes_df = pd.read_excel('test.xlsx')
+zip_codes = zip_codes_df['zip']
+# Iterate through zip codes and scrape data
+for zip_code in zip_codes:
+    scrape_data(zip_code)
