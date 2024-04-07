@@ -29,6 +29,7 @@ def scrape_data(zip_code):
             break
 
     # error_element = driver.find_element(By.XPATH, "//span[@class='text error' and @id='fgx-brand-locateDealerMsgError']")
+    index_id = driver.find_elements(By.CLASS_NAME, "index")
     dealer_names = driver.find_elements(By.CLASS_NAME, "dealer-name")
     distance = driver.find_elements(By.XPATH, "//span[@class='distance']")
     address = driver.find_elements(By.CLASS_NAME, "street-city-state-zip")
@@ -43,7 +44,7 @@ def scrape_data(zip_code):
             # Create a CSV writer object
             csv_writer = csv.writer(csvfile)
             # Write the header row
-            csv_writer.writerow(['Dealer Name', 'Distance', 'Address', 'Telephone'])
+            csv_writer.writerow(['Index','Dealer Name', 'Distance', 'Address','zipcode', 'Telephone'])
 
     # Open a CSV file in write mode
     with open('dealer_info.csv', 'a', newline='', encoding='utf-8') as csvfile:
@@ -52,18 +53,20 @@ def scrape_data(zip_code):
         # Iterate over the elements and write each row to the CSV file
         for i in range(len(dealer_names)):
             # index = index_id[i].text
+            ind = index_id[i].text
             name = dealer_names[i].text
             dist = distance[i].text
             addr = address[i].text
+            zipcode = formatted_zip
             # Extract telephone numbers
             telephone_numbers = [tel.text.strip() for tel in telephone]
             tel = telephone_numbers[i]
             print(name , dist, addr, tel)
-            csv_writer.writerow([name, dist, addr, tel])
+            csv_writer.writerow([ind, name, dist, addr, zipcode,tel])
     print("Data has been scraped and stored in dealer_info.csv for url:{0} and zip-code:{1}".format(url, zip_code))
 
 # Read zip codes from Excel file
-zip_codes_df = pd.read_excel('test.xlsx')
+zip_codes_df = pd.read_excel('smallzip.xlsx')
 zip_codes = zip_codes_df['zip']
 # Iterate through zip codes and scrape data
 for zip_code in zip_codes:
